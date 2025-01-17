@@ -1,5 +1,8 @@
 "use client";
 
+import { useGrid, type GridItem } from "@/context/grid-context";
+import { ImageIcon } from "lucide-react";
+import Image from "next/image";
 import React, { useRef, useState } from "react";
 
 type StartData = {
@@ -19,12 +22,19 @@ type Size = {
   width: number;
 };
 
-const GridItem: React.FC<{
-  height: number;
-  width: number;
-  top: number;
-  left: number;
-}> = ({ height, width, top, left }) => {
+type Props = GridItem;
+
+const GridItem = ({
+  id,
+  height,
+  width,
+  top,
+  left,
+  type,
+  text,
+  imageUrl,
+}: Props) => {
+  const grid = useGrid();
   const itemRef = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<Position>({ top, left });
   const [size, setSize] = useState<Size>({ height, width });
@@ -44,6 +54,7 @@ const GridItem: React.FC<{
     Math.round(value / gridSize) * gridSize;
 
   const handleMouseDownDrag = (e: React.MouseEvent<HTMLDivElement>) => {
+    grid.setSelectedItemId?.(id);
     setDragging(true);
     console.log("dragging", e.clientX, e.clientY);
     setStartData({
@@ -172,11 +183,31 @@ const GridItem: React.FC<{
         left: `${position.left}%`,
         height: `${size.height}%`,
         width: `${size.width}%`,
-        backgroundColor: "lightblue",
         cursor: "grab",
         boxSizing: "border-box",
       }}
+      className="bg-zinc-500/50"
     >
+      <div
+        style={{
+          backgroundImage: `url(${imageUrl})`,
+          backgroundSize: "contain",
+          backgroundRepeat: "no-repeat",
+          backgroundPosition: "center",
+        }}
+        className="relative size-full overflow-hidden flex flex-col items-center justify-center gap-2 select-none"
+      >
+        {type === "character" && (
+          <>
+            {!imageUrl && (
+              <>
+                <ImageIcon />
+                <span className="text-xs">No image set</span>
+              </>
+            )}
+          </>
+        )}
+      </div>
       <div
         onMouseDown={(e) => handleMouseDownResize(e, "bottom-right")}
         className="cursor-se-resize"
