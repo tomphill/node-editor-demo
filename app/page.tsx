@@ -1,6 +1,6 @@
 import { GridProvider } from "@/context/grid-context";
-import Grid from "./grid";
-import Sidebar from "./sidebar";
+import Grid from "./scene-editor/grid";
+import Sidebar from "./scene-editor/sidebar";
 
 export default function Home() {
   return (

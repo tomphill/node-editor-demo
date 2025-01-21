@@ -1,6 +1,7 @@
 "use client";
 
 import { useGrid, type GridItem } from "@/context/grid-context";
+import { cn } from "@/lib/utils";
 import { ImageIcon } from "lucide-react";
 import Image from "next/image";
 import React, { useRef, useState } from "react";
@@ -32,7 +33,7 @@ const GridItem = ({
   left,
   type,
   text,
-  imageUrl,
+  data,
 }: Props) => {
   const grid = useGrid();
   const itemRef = useRef<HTMLDivElement>(null);
@@ -99,6 +100,13 @@ const GridItem = ({
       top: newTop,
       left: newLeft,
     });
+
+    grid.updateGridItem?.(id, {
+      height: size.height,
+      width: size.width,
+      top: newTop,
+      left: newLeft,
+    });
   };
 
   const handleMouseUpDrag = () => {
@@ -131,8 +139,6 @@ const GridItem = ({
     const parentHeight = itemRef?.current?.parentElement?.clientHeight;
     const parentWidth = itemRef?.current?.parentElement?.clientWidth;
 
-    console.log({ parentHeight, parentWidth });
-
     if (!parentHeight || !parentWidth) return;
 
     newWidth = snapToGrid(size.width + (deltaX / parentWidth) * 100);
@@ -149,6 +155,13 @@ const GridItem = ({
     setSize({
       height: Math.max(newHeight, gridSize),
       width: Math.max(newWidth, gridSize),
+    });
+
+    grid.updateGridItem?.(id, {
+      height: Math.max(newHeight, gridSize),
+      width: Math.max(newWidth, gridSize),
+      top: position.top,
+      left: position.left,
     });
   };
 
@@ -176,6 +189,7 @@ const GridItem = ({
   return (
     <div
       ref={itemRef}
+      onDragStart={(e) => e.preventDefault()}
       onMouseDown={handleMouseDownDrag}
       style={{
         position: "absolute",
@@ -186,24 +200,60 @@ const GridItem = ({
         cursor: "grab",
         boxSizing: "border-box",
       }}
-      className="bg-zinc-500/50"
+      className={cn(
+        `bg-zinc-500/50`,
+        id === grid.selectedItem?.id &&
+          "shadow-lg shadow-sky-500/50 border border-sky-500"
+      )}
     >
-      <div
-        style={{
-          backgroundImage: `url(${imageUrl})`,
-          backgroundSize: "contain",
-          backgroundRepeat: "no-repeat",
-          backgroundPosition: "center",
-        }}
-        className="relative size-full overflow-hidden flex flex-col items-center justify-center gap-2 select-none"
-      >
+      <div className="relative size-full overflow-hidden flex items-center justify-center gap-2 select-none">
+        {type === "text" && (
+          <div className={cn("size-full relative flex")}>
+            <span
+              className={cn(
+                data?.alignContent === "center" && "m-auto",
+                data?.alignContent === "center top" && "mx-auto mb-auto",
+                data?.alignContent === "left top" && "mr-auto mb-auto",
+                data?.alignContent === "right top" && "ml-auto mb-auto",
+                data?.alignContent === "left center" && "mr-auto my-auto",
+                data?.alignContent === "right center" && "ml-auto my-auto",
+                data?.alignContent === "right bottom" && "ml-auto mt-auto",
+                data?.alignContent === "center bottom" && "mx-auto mt-auto",
+                data?.alignContent === "left bottom" && "mr-auto mt-auto"
+              )}
+            >
+              {data?.text}
+            </span>
+          </div>
+        )}
         {type === "character" && (
           <>
-            {!imageUrl && (
+            {!data?.imageUrl && (
               <>
                 <ImageIcon />
                 <span className="text-xs">No image set</span>
               </>
+            )}
+            {data?.imageUrl && (
+              <div className="size-full relative flex">
+                <img
+                  src={data?.imageUrl}
+                  alt="Character"
+                  style={{ maxHeight: `${data?.imageSize ?? 100}%` }}
+                  className={cn(
+                    "relative max-w-full",
+                    data?.alignContent === "center" && "m-auto",
+                    data?.alignContent === "center top" && "mx-auto mb-auto",
+                    data?.alignContent === "left top" && "mr-auto mb-auto",
+                    data?.alignContent === "right top" && "ml-auto mb-auto",
+                    data?.alignContent === "left center" && "mr-auto my-auto",
+                    data?.alignContent === "right center" && "ml-auto my-auto",
+                    data?.alignContent === "right bottom" && "ml-auto mt-auto",
+                    data?.alignContent === "center bottom" && "mx-auto mt-auto",
+                    data?.alignContent === "left bottom" && "mr-auto mt-auto"
+                  )}
+                />
+              </div>
             )}
           </>
         )}
@@ -215,8 +265,8 @@ const GridItem = ({
           position: "absolute",
           bottom: 0,
           right: 0,
-          width: "10px",
-          height: "10px",
+          width: "16px",
+          height: "16px",
           backgroundColor: "black",
           border: "1px solid white",
         }}

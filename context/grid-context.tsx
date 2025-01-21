@@ -1,6 +1,12 @@
 "use client";
 
-import { createContext, useContext, useReducer, useState } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useReducer,
+  useState,
+} from "react";
 
 export type CharacterData = {
   name: string;
@@ -23,6 +29,7 @@ export type GridItem = {
   imageUrl?: string;
   characterName?: string;
   characterRole?: string;
+  data?: any;
 };
 
 type GridAction =
@@ -40,22 +47,30 @@ const initialState: GridState = {
 };
 
 function gridReducer(state: GridState, action: GridAction): GridState {
+  let gridItems;
   switch (action.type) {
     case "ADD_ITEM":
+      gridItems = [...state.gridItems, action.payload];
+      localStorage.setItem("gridItems", JSON.stringify(gridItems));
       return {
-        gridItems: [...state.gridItems, action.payload],
+        gridItems,
       };
     case "UPDATE_ITEM":
+      gridItems = state.gridItems.map((item) =>
+        item.id === action.payload.id ? action.payload : item
+      );
+      localStorage.setItem("gridItems", JSON.stringify(gridItems));
       return {
-        gridItems: state.gridItems.map((item) =>
-          item.id === action.payload.id ? action.payload : item
-        ),
+        gridItems,
       };
     case "REMOVE_ITEM":
+      gridItems = state.gridItems.filter((item) => item.id !== action.payload);
+      localStorage.setItem("gridItems", JSON.stringify(gridItems));
       return {
-        gridItems: state.gridItems.filter((item) => item.id !== action.payload),
+        gridItems,
       };
     case "CLEAR_ALL":
+      localStorage.setItem("gridItems", JSON.stringify([]));
       return initialState;
     default:
       return state;
@@ -69,11 +84,36 @@ const GridContext = createContext<{
   removeSelectedItem?: () => void;
   addGridItem?: (item: GridItem) => void;
   removeGridItem?: (id: string) => void;
+  updateGridItemData?: (id: string, data: any) => void;
+  updateGridItem?: (
+    id: string,
+    {
+      top,
+      left,
+      height,
+      width,
+    }: {
+      top: number;
+      left: number;
+      height: number;
+      width: number;
+    }
+  ) => void;
 }>({ gridItems: [], selectedItem: null });
 
 const GridProvider = ({ children }: { children: React.ReactNode }) => {
-  const [selectedItem, setSelectedItem] = useState<GridItem | null>(null);
+  const [selectedItem, setSelectedItem] = useState<string | null>("");
   const [state, dispatch] = useReducer(gridReducer, initialState);
+
+  useEffect(() => {
+    const gridItems = JSON.parse(localStorage.getItem("gridItems") ?? "[]");
+    if (gridItems.length) {
+      dispatch({ type: "CLEAR_ALL" });
+      gridItems.forEach((item: GridItem) => {
+        dispatch({ type: "ADD_ITEM", payload: item });
+      });
+    }
+  }, []);
 
   const addGridItem = (item: GridItem) => {
     dispatch({ type: "ADD_ITEM", payload: item });
@@ -83,9 +123,53 @@ const GridProvider = ({ children }: { children: React.ReactNode }) => {
     dispatch({ type: "REMOVE_ITEM", payload: id });
   };
 
-  const setSelectedItemId = (id: string) => {
+  const updateGridItem = (
+    id: string,
+    {
+      top,
+      left,
+      height,
+      width,
+    }: {
+      top: number;
+      left: number;
+      height: number;
+      width: number;
+    }
+  ) => {
     const item = state.gridItems.find((item) => item.id === id);
-    setSelectedItem(item || null);
+    if (!item) return;
+    dispatch({
+      type: "UPDATE_ITEM",
+      payload: {
+        ...item,
+        id,
+        top,
+        left,
+        height,
+        width,
+      },
+    });
+  };
+
+  const updateGridItemData = (id: string, data: any) => {
+    const item = state.gridItems.find((item) => item.id === id);
+    if (!item) return;
+    dispatch({
+      type: "UPDATE_ITEM",
+      payload: {
+        ...item,
+        id,
+        data: {
+          ...item.data,
+          ...data,
+        },
+      },
+    });
+  };
+
+  const setSelectedItemId = (id: string) => {
+    setSelectedItem(id || null);
   };
 
   const removeSelectedItem = () => {
@@ -98,9 +182,12 @@ const GridProvider = ({ children }: { children: React.ReactNode }) => {
         gridItems: state.gridItems,
         addGridItem,
         removeGridItem,
-        selectedItem,
+        selectedItem:
+          state.gridItems.find((item) => item.id === selectedItem) || null,
         setSelectedItemId,
         removeSelectedItem,
+        updateGridItem,
+        updateGridItemData,
       }}
     >
       {children}
